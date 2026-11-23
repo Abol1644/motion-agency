@@ -125,7 +125,7 @@ Translate adjectives into observable decisions. Ask what the user wants the audi
 
 ### 3D / dimensional abstract
 - **Visual:** Form, perspective, occlusion and light establish depth. **Motion:** orbit, assemble, extrude or rotate with a defined camera and subject.
-- **Build:** Simulated depth with SVG/Canvas, or an explicitly approved local library/runtime for real 3D. A dependency must be acknowledged, not silently fetched. Static and deterministic frame seeking still matter.
+- **Build:** Use Three.js for actual 3D when it serves the concept, with a compatible GSAP or Anime.js timeline when helpful. Declare pinned dependencies and environment requirements. Preserve deterministic frame seeking.
 
 ### Ambient / meditative
 - **Visual:** Minimal, repeated shapes and restrained color. **Motion:** slow oscillation, breathing or gradual transformation, designed for seamless looping when required. Provide pause and reduced-motion behavior.

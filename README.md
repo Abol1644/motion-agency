@@ -31,7 +31,7 @@ A typical project follows four stages:
 1. **Discovery.** Gemini asks a small number of focused questions about the goal, audience, format, and desired visual style.
 2. **Resource collection.** The user provides assets and references in one or more batches. Gemini waits for **DONE** before finalizing a storyboard. Use **DONE — no assets** if there are no materials to provide.
 3. **Direction and approval.** Gemini proposes a time-coded storyboard. The user can request revisions or, where image generation is available, an illustrative storyboard image. Production begins only after explicit storyboard approval, unless the user waives that step.
-4. **Production.** Gemini creates a browser animation and provides instructions for rendering it to video. The default approach is a self-contained HTML file using plain HTML, CSS, SVG, Canvas, and JavaScript.
+4. **Production.** Gemini creates a browser animation and provides instructions for rendering it to video. It can use Three.js for 3D scenes and GSAP or Anime.js for coordinated animation, choosing the tools that fit the approved storyboard.
 
 These stages are instructions to the model, not technical guarantees. Review the storyboard, generated code, and final output before use.
 
@@ -44,10 +44,13 @@ motion-agency/
 ├── skills/
 │   └── motion-agency/
 │       ├── references/
+│       │   ├── animejs.md
 │       │   ├── creative-recipes.md
 │       │   ├── gemini-workflow.md
+│       │   ├── gsap.md
 │       │   ├── motion-styles.md
 │       │   ├── motion-techniques.md
+│       │   ├── threejs.md
 │       │   └── visual-direction.md
 │       └── SKILL.md
 └── README.md
@@ -62,6 +65,9 @@ motion-agency/
 | [`motion-styles.md`](skills/motion-agency/references/motion-styles.md) | A reference library of visual and motion styles. |
 | [`motion-techniques.md`](skills/motion-agency/references/motion-techniques.md) | Animation principles, browser techniques, accessibility, and capture guidance. |
 | [`visual-direction.md`](skills/motion-agency/references/visual-direction.md) | Composition, typography, visual research, and storyboarding. |
+| [`threejs.md`](skills/motion-agency/references/threejs.md) | Three.js scenes, 3D rendering, and frame-accurate capture guidance. |
+| [`gsap.md`](skills/motion-agency/references/gsap.md) | GSAP timelines, sequencing, and licensing considerations. |
+| [`animejs.md`](skills/motion-agency/references/animejs.md) | Anime.js v4 timelines, SVG motion, and seeking. |
 
 > **Naming:** The repository and skill directory are named `motion-agency`. The current `name` in `SKILL.md` and the name referenced by `AGENT.md` are `motion-director`. Select `motion-director` in Gemini if that is the name displayed. If a host requires a skill directory to match its metadata name, upload a copy of the skill directory named `motion-director` or use the ZIP method below. Do not change only one name without updating the corresponding references.
 
@@ -69,7 +75,8 @@ motion-agency/
 
 - A signed-in Gemini account with access to the relevant features. Skills availability may vary by account type, administrator settings, region, and rollout.
 - The files in this repository. An installed skill should include both `SKILL.md` and its `references/` directory.
-- A modern browser for opening the generated animation locally, if the active Gemini environment does not provide a suitable preview.
+- A modern browser for running the generated animation. Three.js projects require compatible WebGL support; CDN-backed dependencies additionally require an allowed network connection and appropriate content-security policy. A locally hosted dependency bundle can support offline use where permitted by its licenses.
+- The animation's declared, version-pinned libraries and any required plugins. The skill references these libraries; it does not install them.
 - Optional local tools for frame-by-frame video rendering: Python, Playwright, a Playwright-compatible Chromium installation, and FFmpeg. Installation may require administrator approval.
 
 The skill and launcher are text instructions. They do not install software, guarantee access to Gemini tools, or automatically create a video file.
@@ -126,11 +133,21 @@ Only upload materials you are authorized to use. Identify references that are fo
 
 ## Output and video rendering
 
-After storyboard approval, the default deliverable is a self-contained browser animation. The skill instructs Gemini to use a deterministic timeline so that individual frames can be captured for video rendering.
+After storyboard approval, the default deliverable is a code-authored browser animation with explicitly declared dependencies. Three.js can provide 3D rendering, while GSAP or Anime.js can provide coordinated animation timelines. The skill instructs Gemini to synchronize them against a deterministic master timeline so individual frames can be captured for video rendering. Library-specific guidance is included in the references; upstream specialist skills are optional and are not installed automatically.
 
 The skill also provides a local frame-by-frame rendering tutorial using Python, Playwright, Chromium, and FFmpeg. The baseline image-sequence workflow produces a **silent MP4**; adding authorized audio is a separate step. A local screen recorder can be a simpler alternative, but may be less frame-accurate.
 
 Generated code and rendering instructions should be reviewed and tested in the intended environment. A browser preview, generated HTML file, and rendered video are distinct outputs; do not assume one has been created merely because another exists.
+
+### Animation libraries and specialist skills
+
+| Tool | Typical use | Reference |
+| --- | --- | --- |
+| Three.js | 3D scenes, cameras, lighting, materials, and WebGL rendering | [Three.js documentation](https://threejs.org/docs/) |
+| GSAP | Timelines, sequencing, and DOM/SVG or 3D-property animation | [Official GSAP skills](https://github.com/greensock/gsap-skills) |
+| Anime.js | Timelines, SVG and DOM animation, and staggered effects | [Anime.js documentation](https://animejs.com/documentation/) |
+
+Motion Agency's references are independently authored. The [Three.js animation skill](https://github.com/CloudAI-X/threejs-skills/blob/main/skills/threejs-animation/SKILL.md) and [Anime.js v4 skill](https://github.com/BowTiedSwan/animejs-skills) are community-maintained; the GSAP collection is official. These external skills are linked for further study, not bundled or installed. Review their licenses, source, versions, and compatibility before using them.
 
 ## Using Motion Agency without an installed skill
 
@@ -150,7 +167,8 @@ If you need to move the work into a separate session, carry over the approved st
 - **Gemini features vary.** Skill installation, image generation, previews, file downloads, and other features depend on the account and environment.
 - **Canvas compatibility is limited.** Google currently documents that Gemini app Skills do not yet work with Canvas. If necessary, complete direction in one session and transfer the approved brief and relevant materials to a compatible session. Check Google's current [Skills feature guidance](https://support.google.com/gemini/answer/18560919?hl=en).
 - **Storyboard images are optional.** An illustrative image requires an available image-generation capability. If unavailable, use the written storyboard or a prompt for an available image tool.
-- **Plain code is the default.** The workflow does not assume external libraries, fonts, images, or network access. A library such as Three.js is an additional dependency and should be used only when appropriate and available.
+- **Library dependencies are expected.** A browser project may use Three.js, GSAP, or Anime.js. CDN-backed code needs a permitted connection; locally bundled dependencies have their own licensing and setup requirements. The project includes reference guidance, not the library files themselves.
+- **Check third-party terms.** GSAP's no-charge standard license permits many commercial uses but contains restrictions for certain competing visual animation builders. It is not the same as an MIT license. Consult the current [GSAP license](https://gsap.com/community/standard-license/) for the intended use; library and skill-document licenses are separate.
 - **References are guidance, not a guarantee.** The model may miss instructions, misunderstand assets, or produce code that requires revision. Verify visual quality, accessibility, factual claims, and export behavior.
 - **Confidentiality and rights remain your responsibility.** Follow your organization's policies and obtain permission for assets, music, fonts, and other materials before use.
 
@@ -163,7 +181,7 @@ If you need to move the work into a separate session, carry over the approved st
 | A reference file is not available to Gemini | Reattach it or upload the complete skill with its reference directory. |
 | Gemini starts production before approval | Restate the workflow gate and ask it to return to the storyboard. |
 | A storyboard image cannot be generated | Use the written storyboard or request a prompt for an available image tool. |
-| The animation does not preview in Gemini | Save the complete HTML locally and open it in a compatible browser. |
+| The animation does not preview in Gemini | Check library imports, CSP, WebGL, and network access. Serve the supplied project locally in a compatible browser if the host blocks them. |
 | A video export differs from the preview | Check dimensions, frame rate, fonts, asset loading, playback pause, and deterministic frame seeking. |
 | The new session does not know the project | Transfer the approved brief and storyboard, and reattach the necessary assets and instructions. |
 

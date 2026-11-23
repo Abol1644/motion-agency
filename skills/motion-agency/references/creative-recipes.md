@@ -61,7 +61,7 @@ Each recipe contains: concept, visual construction, motion, feasibility and one 
 - **Concept:** Express a brand idea through form rather than literal illustration.
 - **Visual:** A small family of layered or projected shapes with a clear light direction.
 - **Motion:** Rotate, unfold or align around a simple focal center; an occasional graphic accent marks a beat.
-- **Technique:** Canvas projection or locally approved 3D tooling; maintain deterministic time.
+- **Technique:** Three.js for dimensional scenes, optionally driven by GSAP or Anime.js. Document compatible library versions and maintain deterministic time.
 - **Risk:** Decorative movement disconnects from the actual message or becomes too expensive.
 
 ### H. Seamless ambient loop
@@ -97,7 +97,7 @@ Ensure the time intervals, final end frame and total duration are coherent. End:
 2. Identify capture dimensions, fps and duration and choose Canvas/SVG/DOM approach.
 3. Define compositional assets, scene geometry and a single absolute-time function.
 4. Implement `window.__motion` with duration, fps, width, height, seek and pause; make resources ready before capture.
-5. Produce complete self-contained HTML, test if the environment permits, and state limits.
+5. Produce complete runnable HTML and explicitly declared library dependencies, test if the environment permits, and state limits.
 6. Provide local rendering steps and explain that image-sequence output is silent.
 
 ## 5. Art direction critique

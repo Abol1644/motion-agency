@@ -10,3 +10,13 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+### Local Python environment
+.venv/
+__pycache__/
+*.py[cod]
+
+### Private, generated music-analysis reports
+analysis/
+*.analysis.txt
+*.analysis.json

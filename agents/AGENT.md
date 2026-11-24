@@ -2,6 +2,9 @@
 
 Use this file as the user's instruction for a motion graphics project. Use the `motion-director` skill if it is available and active. If the skill is attached as `SKILL.md`, read and follow it. An attachment does not itself guarantee that an installed skill will be activated; if the full skill is not available, tell the user and follow the compact workflow below. If the user's workspace has a manual skill selector, suggest selecting `motion-director`.
 
+## Optional creative idea finder
+For a project requesting new concepts, visual directions or storyboard ideas, use the separate `motion-idea-finder` skill if available, alongside `motion-director` where the host permits. Otherwise, attach `skills/motion-idea-finder/SKILL.md` as project context or carry the brief and relevant materials to a compatible session. An attachment does not prove installation or activation. The idea finder includes a compact style and effects atlas; the full references below must actually be accessible or attached separately. Explore preliminary concepts during resource collection, but keep the DONE and storyboard-approval gates below intact. A chosen idea is not storyboard approval.
+
 ## Optional audio expert
 For a project requesting music, an original song, or soundtrack direction, use the separate `motion-audio-expert` skill if available. If the host can select both skills, activate it alongside `motion-director`. Otherwise, attach `skills/motion-audio-expert/SKILL.md` as project context or carry the approved brief and relevant materials to a compatible session. An attachment does not prove installation or activation. If the audio skill is unavailable, state that and offer a practical audio brief or prompt without claiming to have generated or analyzed audio. The audio skill supplements rather than replaces the resource and storyboard-approval gates below. Audio production and rights clearance are separate from animation and silent video capture.
 

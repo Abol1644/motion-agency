@@ -81,10 +81,17 @@ def analyze(path, window_seconds, max_seconds):
         energy.append({"start_seconds": round(start / sr, 3),
                        "end_seconds": round(end / sr, 3),
                        "rms_dbfs": round(20 * math.log10(max(rms, 1e-6)), 1)})
+    energy_changes = []
+    for previous, current in zip(energy, energy[1:]):
+        delta = round(current["rms_dbfs"] - previous["rms_dbfs"], 1)
+        if abs(delta) >= 3.0:
+            energy_changes.append({"time_seconds": current["start_seconds"],
+                                   "delta_rms_db": delta})
     notes = [
         "Tempo, beat and onset positions are estimates; half/double-tempo errors are possible.",
         "Onsets are detected sound changes, not necessarily musical beats or scene cuts.",
         "Energy is windowed RMS dBFS, not LUFS, perceived loudness or named song sections.",
+        "Energy-change candidates compare adjacent windows at their boundary; exact transition time is unknown.",
         "No vocals, lyrics, instruments, mood, downbeats or rights are identified.",
         "Listen to the selected track and verify any cue before synchronizing animation."
     ]
@@ -99,7 +106,7 @@ def analyze(path, window_seconds, max_seconds):
             "analysis_sample_rate_hz": sr, "mono_mix_for_analysis": True,
             "tempo_estimate_bpm": tempo, "beat_times_seconds": beats,
             "onset_times_seconds": onsets, "energy_window_seconds": window_seconds,
-            "energy_windows": energy, "notes": notes}
+            "energy_windows": energy, "energy_change_candidates": energy_changes, "notes": notes}
 
 
 def render_report(data):
@@ -115,6 +122,10 @@ def render_report(data):
              "", "Energy windows (start-end seconds: RMS dBFS):"]
     lines += [f"{v['start_seconds']:.3f}-{v['end_seconds']:.3f}: {v['rms_dbfs']:.1f}"
               for v in data["energy_windows"]]
+    lines += ["", "Energy-change candidates (window boundary seconds: RMS change dB):"]
+    changes = data["energy_change_candidates"]
+    lines += ([f"{v['time_seconds']:.3f}: {v['delta_rms_db']:+.1f}" for v in changes]
+              if changes else ["None detected"])
     return "\n".join(lines + ["", "Limitations:"] + [f"- {n}" for n in data["notes"]] + [""])
 
 

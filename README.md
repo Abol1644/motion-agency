@@ -1,211 +1,124 @@
 # Motion Agency
 
-A creative direction and motion graphics workflow for Gemini. Motion Agency guides a project from an initial brief through reference collection, storyboard approval, and a code-based browser animation.
-
-The project combines a reusable skill with a per-project agent brief. Its reference library covers visual styles, storyboarding, animation techniques, creative recipes, and Gemini-specific workflows.
-
-## Contents
-
-- [How it works](#how-it-works)
-- [Project structure](#project-structure)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Start a project](#start-a-project)
-- [Output and video rendering](#output-and-video-rendering)
-- [Using Motion Agency without an installed skill](#using-motion-agency-without-an-installed-skill)
-- [Compatibility and limitations](#compatibility-and-limitations)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
-- [Resources](#resources)
+Motion Agency is a creative workflow for turning a brief into a music-synchronized, code-authored motion graphic. It uses three **separate sessions**, a local music-analysis script, and manual handoffs. The files are instructions and tools, not an automatically orchestrated application: skills and capabilities must actually be available in the chosen host.
 
 ## How it works
 
-Motion Agency uses two complementary roles:
-
-- **Motion director:** clarifies the brief, develops a visual direction, and presents a storyboard.
-- **Motion graphics designer:** translates the approved storyboard into a browser animation using code.
-
-A typical project follows four stages:
-
-1. **Discovery.** Gemini asks a small number of focused questions about the goal, audience, format, and desired visual style.
-2. **Resource collection.** The user provides assets and references in one or more batches. Gemini waits for **DONE** before finalizing a storyboard. Use **DONE — no assets** if there are no materials to provide.
-3. **Direction and approval.** Gemini proposes a time-coded storyboard. The user can request revisions or, where image generation is available, an illustrative storyboard image. Production begins only after explicit storyboard approval, unless the user waives that step.
-4. **Production.** Gemini creates a browser animation and provides instructions for rendering it to video. It can use Three.js for 3D scenes and GSAP or Anime.js for coordinated animation, choosing the tools that fit the approved storyboard.
-
-These stages are instructions to the model, not technical guarantees. Review the storyboard, generated code, and final output before use.
-
-## Project structure
-
-```text
-motion-agency/
-├── agents/
-│   └── AGENT.md
-├── skills/
-│   └── motion-agency/
-│       ├── references/
-│       │   ├── animejs.md
-│       │   ├── creative-recipes.md
-│       │   ├── gemini-workflow.md
-│       │   ├── gsap.md
-│       │   ├── motion-styles.md
-│       │   ├── motion-techniques.md
-│       │   ├── threejs.md
-│       │   └── visual-direction.md
-│       └── SKILL.md
-└── README.md
+```mermaid
+flowchart TD
+  U[User brief and assets] --> D[Session 1: director and idea generator]
+  D --> B[Discuss and approve concept and storyboard]
+  B --> P[Director writes music prompt]
+  P --> A[Session 3: audio and music generator]
+  A --> T[User selects an authorized track]
+  T --> L[Local music analysis]
+  L --> R[Report returned to session 1]
+  R --> H[Director maps cues and writes production prompt]
+  H --> M[Session 2: motion graphics designer]
+  M --> V[Animation and local silent video capture]
+  V -. Optional authorized mux .-> F[Video with music]
 ```
+
+The order is **1 → 3 → local analysis → 1 → 2**. The user manually carries the prompts, approved storyboard, report and authorized files between sessions; no shared context or automatic skill activation is assumed.
+
+1. **Session 1 — director and idea generator.** Use [`agents/AGENT.md`](agents/AGENT.md) with [`motion-idea-finder`](skills/motion-idea-finder/SKILL.md). Discuss the brief and collect assets in batches. Say **DONE**, or **DONE — no assets**, when finished. Review and explicitly approve the storyboard before production, unless you explicitly waive the gate. The director then supplies a self-contained prompt for music generation.
+2. **Session 3 — audio and music.** Start a separate session with [`motion-audio-expert`](skills/motion-audio-expert/SKILL.md) and the director's prompt. Generate or source music using a genuinely available tool, listen to it and select an authorized track. If no generator is available, the skill can supply a prompt or other production guidance; it does not install a music model.
+3. **Local analysis and return to session 1.** Run the analysis script on the selected track. Bring its text report and any listening notes back to the director. The director uses the actual report and approved storyboard to propose the visual/music cue map and a complete motion-production prompt. Resolve any duration or timing conflicts before proceeding.
+4. **Session 2 — motion graphics.** Start a separate session with the production prompt, approved storyboard, report and necessary authorized assets. Use [`motion-director`](skills/motion-agency/SKILL.md), the existing skill's historical name; in this workflow it is the **motion graphics production specialist**, not the project manager. It produces browser animation code and local rendering instructions.
+
+A silent project or bypass of the music step needs explicit user direction. An idea choice, DONE or a music selection is not storyboard approval. Do not silently change approved visuals, exact copy, duration or audio. A new session cannot be assumed to have earlier approvals or assets.
+
+## Local music analysis
+
+[`scripts/analyze_music.py`](scripts/analyze_music.py) processes the track locally and writes:
+
+- A readable `*.analysis.txt` report for the director.
+- A `*.analysis.json` report with the same structured timing information.
+
+The reports include a source SHA-256, duration, estimated BPM, estimated beat timestamps, detected onsets and fixed-window RMS energy. Beat/onset timing and BPM are **estimates** and can be wrong, including half/double-tempo estimates. Onsets are not guaranteed musical beats or scene cuts. Energy is RMS dBFS, not LUFS or identified musical sections. The script does not identify instruments, vocals, lyrics, mood, downbeats or rights. Listen to the track and verify chosen cues; do not claim Gemini heard the music merely because it read the report.
+
+### Setup
+
+Requires Python 3.10+ and the pinned packages in [`requirements-music.txt`](requirements-music.txt); tested together with Python 3.13. Installation can require network access and local approval. Processing itself is local and does not upload the track. Use only audio you have permission to process and share.
+
+From the repository root on macOS/Linux:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-music.txt
+.venv/bin/python scripts/analyze_music.py /path/to/selected-track.wav --output-dir analysis
+```
+
+On Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-music.txt
+.\.venv\Scripts\python.exe scripts\analyze_music.py C:\path\to\selected-track.wav --output-dir analysis
+```
+
+Replace the example path with the actual audio file. WAV and FLAC are recommended; MP3 and other formats depend on your local libsndfile support. For an unsupported format, an approved local FFmpeg installation can create a WAV copy:
+
+```bash
+ffmpeg -i selected-track.mp3 -c:a pcm_s16le selected-track.wav
+```
+
+Analyze and identify the WAV copy, and use that same version for synchronization where practical. The hash identifies the analyzed file, so a converted copy has a different hash from its source; check any offset or duration change before using it. Keep the original unchanged.
+
+The default input limit is 600 seconds. Use `--max-seconds 900` only when intentionally analyzing a longer file; longer files require more memory and time. Use `--window 1` to choose a one-second energy window. The script refuses to replace either existing report unless `--overwrite` is explicitly supplied. See all options with:
+
+```bash
+python scripts/analyze_music.py --help
+```
+
+The reports can reveal a file name, hash and timing. Share them only with authorized people. Do not commit project audio or reports to the repository. The script cannot itself prove the user has permission to use a track.
+
+## Repository structure
 
 | Path | Purpose |
 | --- | --- |
-| [`agents/AGENT.md`](agents/AGENT.md) | Per-project launcher defining the roles and workflow. |
-| [`skills/motion-agency/SKILL.md`](skills/motion-agency/SKILL.md) | Skill instructions, workflow gates, production requirements, and a rendering tutorial. |
-| [`creative-recipes.md`](skills/motion-agency/references/creative-recipes.md) | Adaptable concepts, handoff templates, critique, and troubleshooting. |
-| [`gemini-workflow.md`](skills/motion-agency/references/gemini-workflow.md) | Gemini setup considerations, resource handling, and capability limitations. |
-| [`motion-styles.md`](skills/motion-agency/references/motion-styles.md) | A reference library of visual and motion styles. |
-| [`motion-techniques.md`](skills/motion-agency/references/motion-techniques.md) | Animation principles, browser techniques, accessibility, and capture guidance. |
-| [`visual-direction.md`](skills/motion-agency/references/visual-direction.md) | Composition, typography, visual research, and storyboarding. |
-| [`threejs.md`](skills/motion-agency/references/threejs.md) | Three.js scenes, 3D rendering, and frame-accurate capture guidance. |
-| [`gsap.md`](skills/motion-agency/references/gsap.md) | GSAP timelines, sequencing, and licensing considerations. |
-| [`animejs.md`](skills/motion-agency/references/animejs.md) | Anime.js v4 timelines, SVG motion, and seeking. |
+| [`agents/AGENT.md`](agents/AGENT.md) | Session 1 launcher and project-management workflow. |
+| [`skills/motion-idea-finder/SKILL.md`](skills/motion-idea-finder/SKILL.md) | Creative director: discovery, storyboard, music prompt and production handoff. |
+| [`skills/motion-audio-expert/SKILL.md`](skills/motion-audio-expert/SKILL.md) | Session 3 music direction and generation handoff. |
+| [`skills/motion-agency/SKILL.md`](skills/motion-agency/SKILL.md) | Session 2 motion graphics production and capture guidance; metadata name `motion-director`. |
+| [`skills/motion-agency/references/`](skills/motion-agency/references/) | Visual styles, storyboarding, techniques, Gemini, creative recipes, Three.js, GSAP and Anime.js guides. |
+| [`scripts/analyze_music.py`](scripts/analyze_music.py) | Local timing and energy analysis; no audio upload. |
+| [`requirements-music.txt`](requirements-music.txt) | Dependencies for the local analysis script. |
 
-> **Naming:** The repository and skill directory are named `motion-agency`. The current `name` in `SKILL.md` and the name referenced by `AGENT.md` are `motion-director`. Select `motion-director` in Gemini if that is the name displayed. If a host requires a skill directory to match its metadata name, upload a copy of the skill directory named `motion-director` or use the ZIP method below. Do not change only one name without updating the corresponding references.
+## Installing and using the skills
 
-## Requirements
+If your host supports skill uploads, install or select the skills in the sessions where they are needed. Confirm that the metadata name displayed in the host is correct and that included references are accessible. The motion production directory is named `motion-agency` but its skill metadata is `motion-director`; if your host requires matching names, use a copy of the folder named `motion-director`. Uploading a single `SKILL.md` does not install sibling references. These reference paths may not be accessible from the separately installed idea or audio skill.
 
-- A signed-in Gemini account with access to the relevant features. Skills availability may vary by account type, administrator settings, region, and rollout.
-- The files in this repository. An installed skill should include both `SKILL.md` and its `references/` directory.
-- A modern browser for running the generated animation. Three.js projects require compatible WebGL support; CDN-backed dependencies additionally require an allowed network connection and appropriate content-security policy. A locally hosted dependency bundle can support offline use where permitted by its licenses.
-- The animation's declared, version-pinned libraries and any required plugins. The skill references these libraries; it does not install them.
-- Optional local tools for frame-by-frame video rendering: Python, Playwright, a Playwright-compatible Chromium installation, and FFmpeg. Installation may require administrator approval.
-
-The skill and launcher are text instructions. They do not install software, guarantee access to Gemini tools, or automatically create a video file.
-
-## Installation
-
-### Option 1: Upload the skill folder
-
-If Skills is available in your Gemini web app:
-
-1. Open [Gemini](https://gemini.google.com/).
-2. Go to **Customize → Skills → Create → Upload**.
-3. Select the `skills/motion-agency/` folder, or a copy named `motion-director` if the upload flow requires the folder name to match the skill metadata.
-4. Review the imported skill and confirm that the reference files are included.
-5. Create or activate the skill.
-
-To update an existing installation, open the skill and use **More → Replace skill**. Upload the complete skill folder or archive so that the references are included with the updated instructions.
-
-### Option 2: Create and upload a ZIP archive
-
-The archive should contain `SKILL.md` at its root, alongside the `references/` directory. From the repository root, run:
+To package the production skill with its references, run from the repository root:
 
 ```bash
 cd skills/motion-agency
 python3 -m zipfile -c ../../motion-agency-skill.zip SKILL.md references
 ```
 
-Then select `motion-agency-skill.zip` in the Gemini skill-upload flow described above. On systems where the Python command is named `python`, use that command instead of `python3`.
+The idea and audio skills each have their own `SKILL.md` and are installed or attached separately. If skills cannot be installed, attach the relevant instructions as context in each session. Attach `agents/AGENT.md` to the director's opening message. An attachment does not itself activate a skill. Availability, selectors, attachment limits, image generation and Canvas compatibility vary by host, account and configuration; check current documentation and the interface.
 
-Uploading `SKILL.md` alone installs only the instructions; it does not include the expanded reference library. See Google's [skill creation and upload guide](https://support.google.com/gemini/answer/17094296?hl=en&co=GENIE.Platform%3DDesktop) for current requirements.
+## Animation and video
 
-## Start a project
+The production session creates a browser animation with explicitly declared, version-pinned dependencies. Three.js can provide real 3D; GSAP or Anime.js can provide coordinated timelines. A generated project should expose `window.__motion = { duration, fps, width, height, seek, pause, ready }` and a `#motion-stage` so an external capture process can seek to exact times. Dependencies are not bundled by this repository. A CDN-backed page requires permitted network access; a local bundle has its own licensing and setup requirements.
 
-1. Start a new Gemini chat and select the installed `motion-director` skill using the available `/` or `@` selector. An active skill may also be selected automatically, but automatic selection is not guaranteed.
-2. Attach [`agents/AGENT.md`](agents/AGENT.md) to your opening message.
-3. Describe the animation you want to make. Include any details you already know, such as the audience, duration, placement, message, and desired style.
-4. Answer Gemini's questions and provide references or assets in batches.
-5. When all resources have been sent, write **DONE**. If you have no resources, write **DONE — no assets**.
-6. Review the proposed storyboard, request any revisions, and approve it explicitly before production.
-
-Example opening prompt:
-
-```text
-Use the motion-director skill and the attached AGENT.md.
-
-I need a 20-second motion graphic introducing a productivity tool. It will
-appear on our website. Ask me about the visual direction and wait for my
-assets before creating the storyboard.
-```
-
-Gemini may ask for logos, brand guidelines, copy, images, fonts, or examples. Google documents up to 10 supported file attachments per prompt, subject to availability; an attached `AGENT.md` counts toward the limit for that message. File-size, file-type, and context limits also apply. See [Google's file-upload guidance](https://support.google.com/gemini/answer/14903178?hl=en&co=GENIE.Platform%3DDesktop).
-
-Only upload materials you are authorized to use. Identify references that are for inspiration rather than direct reproduction.
-
-## Output and video rendering
-
-After storyboard approval, the default deliverable is a code-authored browser animation with explicitly declared dependencies. Three.js can provide 3D rendering, while GSAP or Anime.js can provide coordinated animation timelines. The skill instructs Gemini to synchronize them against a deterministic master timeline so individual frames can be captured for video rendering. Library-specific guidance is included in the references; upstream specialist skills are optional and are not installed automatically.
-
-The skill also provides a local frame-by-frame rendering tutorial using Python, Playwright, Chromium, and FFmpeg. The baseline image-sequence workflow produces a **silent MP4**; adding authorized audio is a separate step. A local screen recorder can be a simpler alternative, but may be less frame-accurate.
-
-Generated code and rendering instructions should be reviewed and tested in the intended environment. A browser preview, generated HTML file, and rendered video are distinct outputs; do not assume one has been created merely because another exists.
-
-### Animation libraries and specialist skills
-
-| Tool | Typical use | Reference |
-| --- | --- | --- |
-| Three.js | 3D scenes, cameras, lighting, materials, and WebGL rendering | [Three.js documentation](https://threejs.org/docs/) |
-| GSAP | Timelines, sequencing, and DOM/SVG or 3D-property animation | [Official GSAP skills](https://github.com/greensock/gsap-skills) |
-| Anime.js | Timelines, SVG and DOM animation, and staggered effects | [Anime.js documentation](https://animejs.com/documentation/) |
-
-Motion Agency's references are independently authored. The [Three.js animation skill](https://github.com/CloudAI-X/threejs-skills/blob/main/skills/threejs-animation/SKILL.md) and [Anime.js v4 skill](https://github.com/BowTiedSwan/animejs-skills) are community-maintained; the GSAP collection is official. These external skills are linked for further study, not bundled or installed. Review their licenses, source, versions, and compatibility before using them.
-
-## Using Motion Agency without an installed skill
-
-If your account does not have access to Skills, you can use the files as chat attachments instead:
-
-1. Attach `agents/AGENT.md` and `skills/motion-agency/SKILL.md` to a Gemini chat.
-2. Attach the relevant files from `skills/motion-agency/references/` as needed.
-3. Ask Gemini to follow the attached instructions, then provide your project brief.
-4. Send project assets in additional batches and finish with **DONE**.
-
-This approach uses the files as conversational context; it does not install or activate a skill. Attachment limits and context limits still apply.
-
-If you need to move the work into a separate session, carry over the approved storyboard, requirements, and relevant instructions. Reattach the assets and references needed for production, and confirm the new session can access them. A new session may not retain the original conversation or files.
-
-## Compatibility and limitations
-
-- **Gemini features vary.** Skill installation, image generation, previews, file downloads, and other features depend on the account and environment.
-- **Canvas compatibility is limited.** Google currently documents that Gemini app Skills do not yet work with Canvas. If necessary, complete direction in one session and transfer the approved brief and relevant materials to a compatible session. Check Google's current [Skills feature guidance](https://support.google.com/gemini/answer/18560919?hl=en).
-- **Storyboard images are optional.** An illustrative image requires an available image-generation capability. If unavailable, use the written storyboard or a prompt for an available image tool.
-- **Library dependencies are expected.** A browser project may use Three.js, GSAP, or Anime.js. CDN-backed code needs a permitted connection; locally bundled dependencies have their own licensing and setup requirements. The project includes reference guidance, not the library files themselves.
-- **Check third-party terms.** GSAP's no-charge standard license permits many commercial uses but contains restrictions for certain competing visual animation builders. It is not the same as an MIT license. Consult the current [GSAP license](https://gsap.com/community/standard-license/) for the intended use; library and skill-document licenses are separate.
-- **References are guidance, not a guarantee.** The model may miss instructions, misunderstand assets, or produce code that requires revision. Verify visual quality, accessibility, factual claims, and export behavior.
-- **Confidentiality and rights remain your responsibility.** Follow your organization's policies and obtain permission for assets, music, fonts, and other materials before use.
+The production skill includes a Python/Playwright/Chromium and FFmpeg capture tutorial. Its frame sequence produces a **silent MP4**. Adding the selected authorized audio is a separate playback or muxing step; verify sync and rights. A browser animation, a soundtrack, a preview and a rendered video are distinct deliverables. Review the generated code and test in the intended environment.
 
 ## Troubleshooting
 
 | Problem | Suggested action |
 | --- | --- |
-| Skills is not available | Check account or administrator settings, or use the files as chat attachments. |
-| Gemini does not use the skill | Select `motion-director` explicitly if the selector is available, or attach the relevant instructions. |
-| A reference file is not available to Gemini | Reattach it or upload the complete skill with its reference directory. |
-| Gemini starts production before approval | Restate the workflow gate and ask it to return to the storyboard. |
-| A storyboard image cannot be generated | Use the written storyboard or request a prompt for an available image tool. |
-| The animation does not preview in Gemini | Check library imports, CSP, WebGL, and network access. Serve the supplied project locally in a compatible browser if the host blocks them. |
-| A video export differs from the preview | Check dimensions, frame rate, fonts, asset loading, playback pause, and deterministic frame seeking. |
-| The new session does not know the project | Transfer the approved brief and storyboard, and reattach the necessary assets and instructions. |
+| A session cannot see an earlier prompt, approval or file | Manually transfer the approved board, handoff, report and authorized assets; ask for missing details. |
+| A skill is unavailable | Select it explicitly where possible, or attach its instructions and relevant references. An attachment does not install it. |
+| Music cannot be generated or heard in the session | Use an available authorized music tool or composer; return the selected track and local report to the director. |
+| Audio cannot be decoded | Use a WAV or FLAC file or convert a copy locally; analyze the same version intended for synchronization. |
+| Analysis finds no beats | Check for silence, a very short track or weak rhythmic cues; listen and provide verified timestamps. |
+| Reports already exist | Use a new output directory or explicitly pass `--overwrite`. |
+| Music and approved storyboard have different durations | Ask the director/user to choose an edit or approve a storyboard revision; do not silently alter either. |
+| Animation preview or export differs | Check library imports, WebGL, CSP, fonts, assets, dimensions, pause, deterministic seeking and fps. |
 
-For a first test, use a short brief and a small set of assets. Check that Gemini waits for **DONE**, asks for explicit storyboard approval, and only then creates the animation.
+## Contributing and license
 
-## Contributing
+When changing the workflow, keep the launcher, all three skills, references and this README consistent; test the DONE and storyboard gates, handoffs, source identity and timing behavior. Never commit private assets, credentials or unauthorized materials. There is no license file in this repository; review permissions before reuse or redistribution. Third-party animation libraries and dependencies have their own licenses.
 
-Improvements to the skill, reference library, and documentation are welcome. When proposing a change:
-
-1. Explain the problem and intended improvement.
-2. Keep the **DONE** and storyboard-approval gates intact unless the change explicitly addresses them.
-3. Update the relevant references and keep the instructions consistent with the agent launcher.
-4. Check any external links and platform-specific claims against current documentation.
-5. Describe what you tested and any limitations.
-
-Avoid including private project assets, credentials, or material you do not have permission to share.
-
-## License
-
-No license file was included in the project structure provided for this README. Add a license to the repository and consult its terms before redistributing or reusing the project.
-
-## Resources
-
-- [Create and manage skills for Gemini Apps](https://support.google.com/gemini/answer/17094296?hl=en&co=GENIE.Platform%3DDesktop)
-- [Write effective skills for Gemini Apps](https://support.google.com/gemini/answer/17102773?hl=en)
-- [About the transition from Gems to skills](https://support.google.com/gemini/answer/18560919?hl=en)
-- [Upload and analyze files in Gemini Apps](https://support.google.com/gemini/answer/14903178?hl=en&co=GENIE.Platform%3DDesktop)
+External reference guides: [Three.js](https://threejs.org/docs/), [GSAP](https://gsap.com/docs/), [Anime.js](https://animejs.com/documentation/), and [Gemini skill guidance](https://support.google.com/gemini/answer/17094296?hl=en&co=GENIE.Platform%3DDesktop). Links do not install or activate these tools.
